@@ -1,3 +1,4 @@
+## VERSION 2
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -8,148 +9,271 @@ import random
 import string
 import sys
 
+rng = np.random.default_rng()
+
+gender_choices = ['male', 'female']
+active_choices = ['active', 'inactive']
+finished_choices = ['finished', 'other']
+completed_choices = ['completed', 'inactive']
+
 
 #Patient needs a gender column. it can be male of female (female is in the measure)
-def random_gender():
-    return "male" if random.choice([True, False]) else "female"
+#def random_gender():
+#    return "male" if random.choice([True, False]) else "female"
 
-def random_active():
-    return "active" if random.choice([True, False]) else "inactive"
+#def random_active():
+#    return "active" if random.choice([True, False]) else "inactive"
 
-def random_finished():
-    return "finished" if random.choice([True, False]) else "other"
+#def random_finished():
+#    return "finished" if random.choice([True, False]) else "other"
 
-def random_completed():
-    return "completed" if random.choice([True, False]) else "other"
+#def random_completed():
+#    return "completed" if random.choice([True, False]) else "other"
 
-def random_date_before(given_date, days_range=365):
-    """
-    Generates a random date before the given date.
+#def random_date_before(given_date, days_range=365):
+#    """
+#    Generates a random date before the given date.
     
-    :param given_date: The date before which to generate a random date.
-    :param days_range: The range of days before the given_date to consider for generating a random date.
-    :return: A random date before the given_date.
-    """
-    random_days = datetime.timedelta(days=random.randint(1, days_range))
-    return given_date - random_days
+#    :param given_date: The date before which to generate a random date.
+#    :param days_range: The range of days before the given_date to consider for generating a random date.
+#    :return: A random date before the given_date.
+#    """
+#    random_days = datetime.timedelta(days=random.randint(1, days_range))
+#    return given_date - random_days
 
-def random_date_after(given_date, days_range=365):
-    """
-    Generates a random date after the given date.
+#def random_date_after(given_date, days_range=365):
+#    """
+#    Generates a random date after the given date.
     
-    :param given_date: The date after which to generate a random date.
-    :param days_range: The range of days after the given_date to consider for generating a random date.
-    :return: A random date after the given_date.
-    """
-    random_days = datetime.timedelta(days=random.randint(1, days_range))
-    return given_date + random_days
+#    :param given_date: The date after which to generate a random date.
+#    :param days_range: The range of days after the given_date to consider for generating a random date.
+#    :return: A random date after the given_date.
+#    """
+#    random_days = datetime.timedelta(days=random.randint(1, days_range))
+#    return given_date + random_days
 
-def random_value_from_series(series):
-    """
-    Selects a random value from a given Pandas Series.
+#def random_value_from_series(series):
+#    """
+#    Selects a random value from a given Pandas Series.
     
-    :param series: Pandas Series from which to select a random value.
-    :return: A random value from the series.
-    """
-    if series.empty:
-        return None
-    return random.choice(series.tolist())
+#    :param series: Pandas Series from which to select a random value.
+#    :return: A random value from the series.
+#    """
+#    if series.empty:
+#        return None
+#    return random.choice(series.tolist())
 
-def generate_random_string(length):
-    """
-    Generates a random string of a specified length.
+#def generate_random_string(length):
+#    """
+#    Generates a random string of a specified length.
 
-    :param length: The desired length of the random string.
-    :return: A random string of the specified length.
-    """
-    characters = string.ascii_letters + string.digits  # Includes both letters and digits
-    return ''.join(random.choice(characters) for _ in range(length))
+#    :param length: The desired length of the random string.
+#    :return: A random string of the specified length.
+#    """
+#    characters = string.ascii_letters + string.digits  # Includes both letters and digits
+#    return ''.join(random.choice(characters) for _ in range(length))
 
-def either_value_or_string(series, string_length, series_probability):
-    """
-    Returns either a random value from the series or a random string.
+#def either_value_or_string(series, string_length, series_probability):
+#    """
+#    Returns either a random value from the series or a random string.
     
-    :param series: Pandas Series to select from.
-    :param string_length: Length of the random string to be generated.
-    :param series_probability: Probability of choosing from the series (between 0 and 1).
-    :return: Random value from series or a random string.
-    """
-    if random.random() < series_probability:
-        return random_value_from_series(series)
-    else:
-        return generate_random_string(string_length)
+#    :param series: Pandas Series to select from.
+#    :param string_length: Length of the random string to be generated.
+#    :param series_probability: Probability of choosing from the series (between 0 and 1).
+#    :return: Random value from series or a random string.
+#    """
+#    if random.random() < series_probability:
+#        return random_value_from_series(series)
+#    else:
+#        return generate_random_string(string_length)
+
+
+def random_sample(series, num_samples):
+    return series.sample(n=num_samples, replace=True).tolist()
+
+def generate_mixed_strings(series, num_strings, proportion_from_series, length_of_random_string):
+    num_from_series = int(num_strings * proportion_from_series)
+    num_random = num_strings - num_from_series
+
+    # Select strings from the series
+    strings_from_series = series.sample(n=num_from_series, replace=True).tolist()
+
+    # Generate random strings
+    chars = np.array(list(string.ascii_letters + string.digits))
+    random_indices = np.random.randint(len(chars), size=(num_random, length_of_random_string))
+    random_chars = chars[random_indices]
+    random_strings = [''.join(row) for row in random_chars]
+
+    # Combine the two sets of strings
+    combined_strings = strings_from_series + random_strings
+
+    return combined_strings
+
+
+def generate_random_dates_before_range(anchor_date, num_rows, days_before):
+    # Convert the anchor date to numpy datetime64
+    anchor_date_np = np.datetime64(anchor_date)
+
+    # Generate random integers within the range [0, days_before]
+    random_days = np.random.randint(0, days_before, num_rows)
+
+    # Subtract random days from the anchor date
+    random_dates = anchor_date_np - np.timedelta64(1, 'D') * random_days
+
+    return pd.Series(random_dates).dt.strftime('%Y-%m-%d')
+
+def generate_random_dates_after_range(anchor_date, num_rows, days_after):
+    # Convert the anchor date to numpy datetime64
+    anchor_date_np = np.datetime64(anchor_date)
+
+    # Generate random integers within the range [0, days_before]
+    random_days = np.random.randint(0, days_after, num_rows)
+
+    # Subtract random days from the anchor date
+    random_dates = anchor_date_np + np.timedelta64(1, 'D') * random_days
+
+    return pd.Series(random_dates).dt.strftime('%Y-%m-%d')
 
 
 def create_patient_dataframe(num_rows):
-    data = {
-        "id": [uuid.uuid4() for _ in range(num_rows)],
-        "gender": [random_gender() for _ in range(num_rows)]
-    }
-    return pd.DataFrame(data)
+    #data = {
+    #    "id": [uuid.uuid4() for _ in range(num_rows)],
+    #    "gender": [random_gender() for _ in range(num_rows)]
+    #}
+
+    df = pd.DataFrame()
+    df["id"] = [uuid.uuid4() for _ in range(num_rows)]
+    df["gender"] = rng.choice(gender_choices, size=num_rows, replace=True)
+    return df
+    #return pd.DataFrame(data)
 
 def create_condition_dataframe(num_rows, vs_code, patient_ids, anchor_date):
-    data = {
-        "id": [uuid.uuid4() for _ in range(num_rows)],
-        "code_coding_code": [either_value_or_string(vs_code, 10, .05) for _ in range(num_rows)],
-        "subject_reference": [random_value_from_series(patient_ids) for _ in range(num_rows)],
-        "abatement_end": [random_date_before(anchor_date) for _ in range(num_rows)],
-        "onset_end": [random_date_after(anchor_date) for _ in range(num_rows)],
-        "onset_start": [random_date_before(anchor_date) for _ in range(num_rows)],
-        "clinicalStatus_coding_code": [random_active() for _ in range(num_rows)]
-    }
-    return pd.DataFrame(data)
+    df = pd.DataFrame()
+    df["id"] = [uuid.uuid4() for _ in range(num_rows)]
+    df["code_coding_code"] = generate_mixed_strings(vs_code, num_rows, .05, 5)
+    df["subject_reference"] = random_sample(patient_ids, num_rows)
+    df["abatement_end"] = generate_random_dates_before_range(anchor_date, num_rows, 365)
+    df["onset_end"] = generate_random_dates_after_range(anchor_date, num_rows, 365)
+    df["onset_start"] = generate_random_dates_before_range(anchor_date, num_rows, 365)
+    df["clinicalStatus_coding_code"] = rng.choice(active_choices, size=num_rows, replace=True)
+
+
+    #data = {
+    #    "id": [uuid.uuid4() for _ in range(num_rows)],
+    #    "code_coding_code": [either_value_or_string(vs_code, 10, .05) for _ in range(num_rows)],
+    #    "subject_reference": [random_value_from_series(patient_ids) for _ in range(num_rows)],
+    #    "abatement_end": [random_date_before(anchor_date) for _ in range(num_rows)],
+    #    "onset_end": [random_date_after(anchor_date) for _ in range(num_rows)],
+    #    "onset_start": [random_date_before(anchor_date) for _ in range(num_rows)],
+    #    "clinicalStatus_coding_code": [random_active() for _ in range(num_rows)]
+    #}
+    #return pd.DataFrame(data)
+
+    return df
 
 def create_coverage_dataframe(num_rows, patient_ids, anchor_date):
-    data = {
-        "id": [uuid.uuid4() for _ in range(num_rows)],
-        "policyHolder_reference": [random_value_from_series(patient_ids) for _ in range(num_rows)],
-        "period_end": [random_date_after(anchor_date, 180) for _ in range(num_rows)],
-        "period_start": [random_date_before(anchor_date, 180) for _ in range(num_rows)],
-        "type_coding_code": [generate_random_string(5) for _ in range(num_rows)]
-    }
-    return pd.DataFrame(data)
+    df = pd.DataFrame()
+
+    df["id"] = [uuid.uuid4() for _ in range(num_rows)]
+    df["policyHolder_reference"] = random_sample(patient_ids, num_rows)
+    df["period_end"] = generate_random_dates_after_range(anchor_date, num_rows, 180)
+    df["period_start"] = generate_random_dates_before_range(anchor_date, num_rows, 180)
+    df["type_coding_code"] = generate_mixed_strings(pd.Series(), num_rows, 0, 5)
+
+    return df
+    #data = {
+    #    "id": [uuid.uuid4() for _ in range(num_rows)],
+    #    "policyHolder_reference": [random_value_from_series(patient_ids) for _ in range(num_rows)],
+    #    "period_end": [random_date_after(anchor_date, 180) for _ in range(num_rows)],
+    #    "period_start": [random_date_before(anchor_date, 180) for _ in range(num_rows)],
+    #    "type_coding_code": [generate_random_string(5) for _ in range(num_rows)]
+    #}
+    #return pd.DataFrame(data)
 
 def create_encounter_dataframe(num_rows, vs_code, patient_ids, anchor_date):
-    data = {
-        "id": [uuid.uuid4() for _ in range(num_rows)],
-        "type_coding_code": [either_value_or_string(vs_code, 10, .10) for _ in range(num_rows)],
-        "subject_reference": [random_value_from_series(patient_ids) for _ in range(num_rows)],
-        "status": [random_finished() for _ in range(num_rows)],
-        "period_end": [random_date_after(anchor_date, 180) for _ in range(num_rows)],
-        "period_start": [random_date_before(anchor_date, 180) for _ in range(num_rows)]
-    }
-    return pd.DataFrame(data)
+    df = pd.DataFrame()
+
+    df["id"] = [uuid.uuid4() for _ in range(num_rows)]
+    df["type_coding_code"] = generate_mixed_strings(vs_code, num_rows, .1, 5)
+    df["subject_reference"] = random_sample(patient_ids, num_rows)
+    df["status"] = rng.choice(finished_choices, num_rows)
+    df["period_end"] = generate_random_dates_after_range(anchor_date, num_rows, 180)
+    df["period_start"] = generate_random_dates_before_range(anchor_date, num_rows, 180)
+
+    return df
+
+
+    #data = {
+    #    "id": [uuid.uuid4() for _ in range(num_rows)],
+    #    "type_coding_code": [either_value_or_string(vs_code, 10, .10) for _ in range(num_rows)],
+    #    "subject_reference": [random_value_from_series(patient_ids) for _ in range(num_rows)],
+    #    "status": [random_finished() for _ in range(num_rows)],
+    #    "period_end": [random_date_after(anchor_date, 180) for _ in range(num_rows)],
+    #    "period_start": [random_date_before(anchor_date, 180) for _ in range(num_rows)]
+    #}
+    #return pd.DataFrame(data)
 
 def create_meds_dataframe(num_rows, vs_code, patient_ids):
-    data = {
-        "id": [uuid.uuid4() for _ in range(num_rows)],
-        "medication": [either_value_or_string(vs_code, 10, .10) for _ in range(num_rows)],
-        "subject_reference": [random_value_from_series(patient_ids) for _ in range(num_rows)],
-        "status": [random_completed() for _ in range(num_rows)]
-    }
-    return pd.DataFrame(data)
+    df = pd.DataFrame()
+
+    df["id"] = [uuid.uuid4() for _ in range(num_rows)]
+    df["medication"] = generate_mixed_strings(vs_code, num_rows, .1, 5)
+    df["subject_reference"] = random_sample(patient_ids, num_rows)
+    df["status"] = rng.choice(completed_choices, size=num_rows, replace=True)
+
+    return df
+
+    #data = {
+    #    "id": [uuid.uuid4() for _ in range(num_rows)],
+    #    "medication": [either_value_or_string(vs_code, 10, .10) for _ in range(num_rows)],
+    #    "subject_reference": [random_value_from_series(patient_ids) for _ in range(num_rows)],
+    #    "status": [random_completed() for _ in range(num_rows)]
+    #}
+    #return pd.DataFrame(data)
 
 def create_observation_dataframe(num_rows, vs_code, patient_ids, anchor_date):
-    data = {
-        "id": [uuid.uuid4() for _ in range(num_rows)],
-        "code_coding_code": [either_value_or_string(vs_code, 10, .10) for _ in range(num_rows)],
-        "subject_reference": [random_value_from_series(patient_ids) for _ in range(num_rows)],
-        "effective_end": [random_date_after(anchor_date, 60) for _ in range(num_rows)],
-        "effective_start": [random_date_before(anchor_date, 60) for _ in range(num_rows)]
-    }
-    return pd.DataFrame(data)
+    df = pd.DataFrame()
+
+    df["id"] = [uuid.uuid4() for _ in range(num_rows)]
+    df["code_coding_code"] = generate_mixed_strings(vs_code, num_rows, .1, 5)
+    df["subject_reference"] = random_sample(patient_ids, num_rows)
+    df["effective_end"] = generate_random_dates_after_range(anchor_date, num_rows, 60)
+    df["effective_start"] = generate_random_dates_before_range(anchor_date, num_rows, 60)
+
+    return df
+
+    #data = {
+    #    "id": [uuid.uuid4() for _ in range(num_rows)],
+    #    "code_coding_code": [either_value_or_string(vs_code, 10, .10) for _ in range(num_rows)],
+    #    "subject_reference": [random_value_from_series(patient_ids) for _ in range(num_rows)],
+    #    "effective_end": [random_date_after(anchor_date, 60) for _ in range(num_rows)],
+    #    "effective_start": [random_date_before(anchor_date, 60) for _ in range(num_rows)]
+    #}
+    #return pd.DataFrame(data)
 
 def create_procedure_dataframe(num_rows, vs_code, vs_body_code, patient_ids, anchor_date):
-    data = {
-        "id": [uuid.uuid4() for _ in range(num_rows)],
-        "code_coding_code": [either_value_or_string(vs_code, 10, .10) for _ in range(num_rows)],
-        "bodySite_coding_code": [either_value_or_string(vs_body_code, 10, .10) for _ in range(num_rows)],
-        "subject_reference": [random_value_from_series(patient_ids) for _ in range(num_rows)],
-        "status": [random_active() for _ in range(num_rows)],
-        "performed_end": [random_date_after(anchor_date, 60) for _ in range(num_rows)],
-        "performed_start": [random_date_before(anchor_date, 60) for _ in range(num_rows)]
-    }
-    return pd.DataFrame(data)
+    df = pd.DataFrame()
+
+    df["id"] = [uuid.uuid4() for _ in range(num_rows)]
+    df["code_coding_code"] = generate_mixed_strings(vs_code, num_rows, .1, 5)
+    df["bodySite_coding_code"] = generate_mixed_strings(vs_body_code, num_rows, .1, 5)
+    df["subject_reference"] = random_sample(patient_ids, num_rows)
+    df["status"] = rng.choice(active_choices, size=num_rows, replace=True)
+    df["performed_end"] = generate_random_dates_after_range(anchor_date, num_rows, 60)
+    df["performed_start"] = generate_random_dates_before_range(anchor_date, num_rows, 60)
+
+    return df
+
+    #data = {
+    #    "id": [uuid.uuid4() for _ in range(num_rows)],
+    #    "code_coding_code": [either_value_or_string(vs_code, 10, .10) for _ in range(num_rows)],
+    #    "bodySite_coding_code": [either_value_or_string(vs_body_code, 10, .10) for _ in range(num_rows)],
+    #    "subject_reference": [random_value_from_series(patient_ids) for _ in range(num_rows)],
+    #    "status": [random_active() for _ in range(num_rows)],
+    #    "performed_end": [random_date_after(anchor_date, 60) for _ in range(num_rows)],
+    #    "performed_start": [random_date_before(anchor_date, 60) for _ in range(num_rows)]
+    #}
+    #return pd.DataFrame(data)
 
 def make_valueset1329():
     valueset_info = [
